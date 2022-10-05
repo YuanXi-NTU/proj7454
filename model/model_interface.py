@@ -32,14 +32,16 @@ class MInterface(pl.LightningModule):
         return self.model(img)
 
     def training_step(self, batch, batch_idx):
-        img, labels, filename = batch
+        img, labels= batch
+        # img, labels, filename = batch
         out = self(img)
         loss = self.loss_function(out, labels)
         self.log('loss', loss, on_step=True, on_epoch=True, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        img, labels, filename = batch
+        img, labels= batch
+        # img, labels, filename = batch
         out = self(img)
         loss = self.loss_function(out, labels)
         label_digit = labels.argmax(axis=1)

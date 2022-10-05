@@ -2,10 +2,12 @@ import torch
 import numpy as np
 from torch import nn
 from . import common
+from torchvision.models import resnet50
 
 class SimpleNet(nn.Module):
     def __init__(self, in_channel=3, out_channel=10, hid=128, layer_num=5):
         super().__init__()
+        '''
         body = [common.conv3x3(in_channel, hid, 3),
                 nn.ReLU()]
         for _ in range(layer_num-1):
@@ -24,10 +26,15 @@ class SimpleNet(nn.Module):
             nn.Linear(2048, out_channel),
             nn.Sigmoid()
         )
-
+        '''
+        self.model=resnet50(pretrained=True)
+        self.model.fc = torch.nn.Linear(2048, 56)
     def forward(self, x):
+        '''
         x = self.body(x)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.classifier(x)
+        '''
+        x=self.model(x)
         return x

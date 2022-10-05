@@ -25,9 +25,9 @@ def get_transforms(stage: str):
     if stage == 'train':
         return trn.Compose([
             Convert('RGB'),
-            trn.Resize((1333, 800)),
+            trn.Resize((640, 480)),
             trn.RandomHorizontalFlip(),
-            trn.RandomCrop((1333, 800), padding=4),
+            trn.RandomCrop((640, 480), padding=4),
             trn.ToTensor(),
             trn.Normalize(mean, std),
         ])
@@ -35,28 +35,28 @@ def get_transforms(stage: str):
     elif stage in ['val', 'test']:
         return trn.Compose([
             Convert('RGB'),
-            trn.Resize((1333, 800)),
+            trn.Resize((640, 480)),
             trn.ToTensor(),
             trn.Normalize(mean, std),
         ])
 
 
-class PSGClsDataset(Dataset):
+class PsgData(Dataset):
     def __init__(
         self,
-        stage,
-        root='./data/coco/',
+        train,
+        root='./psgdata/coco/',
         num_classes=56,
     ):
-        super(PSGClsDataset, self).__init__()
-        with open('./data/psg/psg_cls_basic.json') as f:
+        super(PsgData, self).__init__()
+        with open('./psgdata/psg/psg_cls_basic.json') as f:
             dataset = json.load(f)
         self.imglist = [
             d for d in dataset['data']
-            if d['image_id'] in dataset[f'{stage}_image_ids']
+            if d['image_id'] in dataset[f'{train}_image_ids']
         ]
         self.root = root
-        self.transform_image = get_transforms(stage)
+        self.transform_image = get_transforms(train)
         self.num_classes = num_classes
 
     def __len__(self):

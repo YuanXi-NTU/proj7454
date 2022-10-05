@@ -1,5 +1,8 @@
 /used
 /.idea
+/lightning_logs
+/psgdata
+/outputs
 /.hydra
 /output
 __pycache__/

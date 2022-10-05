@@ -81,6 +81,7 @@ def main(args : DictConfig):
     # args.logger = logger
 
     trainer = Trainer.from_argparse_args(args)
+    trainer.progress_bar_refresh_rate=20
     trainer.fit(model, data_module)
 
 
