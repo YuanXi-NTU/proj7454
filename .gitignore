@@ -1,5 +1,6 @@
 /used
 /.idea
+/.hydra
 /output
 __pycache__/
 *.pyc
