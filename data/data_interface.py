@@ -29,7 +29,6 @@ class DInterface(pl.LightningDataModule):
         self.num_workers = num_workers
         self.dataset = dataset
         self.kwargs = kwargs
-        print(kwargs)
         self.batch_size = kwargs['batch_size']
         self.load_data_module()
 

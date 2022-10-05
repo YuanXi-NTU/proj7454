@@ -23,6 +23,7 @@
 import os
 import pytorch_lightning as pl
 from argparse import ArgumentParser
+import argparse
 from pytorch_lightning import Trainer
 import pytorch_lightning.callbacks as plc
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -58,7 +59,9 @@ def load_callbacks():
 
 @hydra.main(version_base=None, config_path="./", config_name="cfg")
 def main(args : DictConfig):
+# def main(args):
     pl.seed_everything(args.seed)
+    args=argparse.Namespace(**args)
     '''
     load_path = load_model_path_by_args(args)
     data_module = DInterface(**vars(args))
@@ -127,6 +130,7 @@ if __name__ == '__main__':
     parser.set_defaults(max_epochs=100)
 
     args = parser.parse_args()
+    print(type(args))
 
     # List Arguments
     args.mean_sen = [0.485, 0.456, 0.406]
@@ -135,3 +139,4 @@ if __name__ == '__main__':
     main(args)
     '''
     main()
+    # '''
