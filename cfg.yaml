@@ -1,0 +1,4 @@
+epoch: 10
+batch_size: 32
+lr: 1e-3
+seed: 0
