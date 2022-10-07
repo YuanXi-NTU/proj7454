@@ -1,19 +1,16 @@
-max_epochs: 30
-batch_size: 32
-lr: 1e-3
+epoch: 100
+batch_size: 4
+lr: 0.0001
+
+gamma: 0.5
+step_size: 50
 seed: 0
 dataset: psg_data
 model_name: simple_net
-loss: mse
+
 lr_scheduler: step
 lr_decay_steps: 20
 lr_decay_rate: 0.5
-lr_decay_min_lr: 1e-5
+lr_decay_min_lr: 0.00001
 
-accelerator: auto #gpu
-devices: 1
-num_workers: 8
-progress_bar_refresh_rate: 20
-#gpus: 1
-#distributed_backend: auto
-#strategy: ddp
+log_path: ./log

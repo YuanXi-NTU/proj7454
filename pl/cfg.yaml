@@ -1,0 +1,19 @@
+max_epochs: 30
+batch_size: 1
+lr: 1e-3
+seed: 0
+dataset: clip_data
+model_name: clip_net
+loss: mse
+lr_scheduler: step
+lr_decay_steps: 20
+lr_decay_rate: 0.5
+lr_decay_min_lr: 1e-5
+
+accelerator: auto #gpu
+devices: 2
+num_workers: 8
+progress_bar_refresh_rate: 20
+#gpus: 1
+##distributed_backend: auto
+##strategy: ddp

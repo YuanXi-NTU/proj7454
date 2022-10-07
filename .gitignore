@@ -3,8 +3,10 @@
 /lightning_logs
 /psgdata
 /outputs
+/log
 /.hydra
 /output
+/outputs
 __pycache__/
 *.pyc
 dataset/
