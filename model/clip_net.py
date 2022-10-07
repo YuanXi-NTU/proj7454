@@ -50,6 +50,4 @@ class ClipNet(nn.Module):
         sim=(100.0*img_feat@txt_feat.T).softmax(dim=-1)
         val,idx=sim[0].topk(3)
 
-        import ipdb
-        ipdb.set_trace()
         return val

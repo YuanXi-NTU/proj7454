@@ -22,7 +22,7 @@ def backup(log_path):
     cur_time = f"{tmp.tm_mon}-{tmp.tm_mday}-{tmp.tm_hour}-{tmp.tm_min}-{tmp.tm_sec}"
     path = os.path.join(log_path, cur_time)
     os.mkdir(path)
-    os.system('cp train.py cfg.yaml model.py {path}/')
+    os.system(f'cp train.py cfg.yaml model.py {path}/')
     return path
 
 ori_classes = ['over', 'in front of', 'beside', 'on', 'in', 'attached to'

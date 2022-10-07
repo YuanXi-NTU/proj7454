@@ -37,7 +37,7 @@ def train(cfg):
 
 
 
-    model=Tmodel(cfg).to(device)
+    model=ClipModel(cfg).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr)
 
     iters=0
@@ -45,11 +45,12 @@ def train(cfg):
 
     for e in range(1,cfg.epoch+1):
         for batch_idx, data in enumerate(train_dataloader):
-            img,label=data[0].to(device),data[1].to(device)
+            img,txt,label=data[0].to(device),data[1].to(device),data[2].to(device)
             optimizer.zero_grad()
 
-            pred=model(img)
+            pred=model(img,txt)
             loss=model.loss(pred,label)
+            # acc=torch.topk()
 
             loss.backward()
             optimizer.step()
@@ -69,7 +70,7 @@ def train(cfg):
             img,label=img.to(device),label.to(device)
             pred = model(img)
             loss = model.loss(pred, label)
-            acc = top3(pred)==label
+            # acc = top3(pred)==label
 
 
             val_acc+=acc
