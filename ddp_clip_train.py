@@ -9,17 +9,17 @@ from dataset import PsgData,ClipData
 from model import Tmodel,ClipModel
 from utils import backup, set_seed
 from torch.utils.data import DataLoader
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
 
-torch.autograd.set_detect_anomaly(True)
+import torch.distributed as dist
+dist.init_process_group('nccl', init_method='env://')
+
+rank = dist.get_rank()
+local_rank = os.environ['LOCAL_RANK']
+master_addr = os.environ['MASTER_ADDR']
+master_port = os.environ['MASTER_PORT']
+torch.cuda.set_device(local_rank)
 
 def train(cfg):
-    cfg.local_rank=0
-    local_rank = cfg.local_rank
-
-    torch.cuda.set_device(local_rank)
-    dist.init_process_group(backend='nccl')
 
     torch.set_printoptions(precision=5, sci_mode=False)
 
@@ -27,29 +27,32 @@ def train(cfg):
     logf=open(os.path.join(save_path,'log.txt'),'w')
     set_seed(cfg.seed)
     writer = SummaryWriter(cfg.log_path)
-    # device= 'cuda:2' if torch.cuda.is_available() else 'cpu'
-    device = torch.device("cuda", local_rank)
-
-    cfg.device=device
+    cfg.device=rank
 
     train_dataset = ClipData(train='train')
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-
+    train_sampler=torch.utils.data.distributed.DistributedSampler(train_dataset,
+            num_replicas=None, rank=None, shuffle=True, seed=0, drop_last=False)
     train_dataloader = DataLoader(train_dataset,
                                   batch_size=cfg.batch_size,
-                                  shuffle=True,num_workers=8,sampler=train_sampler)
-    val_dataset = ClipData(train='val')
-    val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
+                                  # num_workers=8,
+                                  sampler=train_sampler)
 
+    val_dataset = ClipData(train='val')
+    val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset,
+                                                                    num_replicas=None, rank=None, shuffle=True, seed=0,
+                                                                    drop_last=False)
     val_dataloader = DataLoader(val_dataset,batch_size=4,
-                                shuffle=False,num_workers=8,sampler=val_sampler)
+                                # num_workers=8,
+                                sampler=val_sampler)
 
     # test_dataset = PsgData(train='test')
     # test_dataloader = DataLoader(test_dataset,batch_size=32,
     #                              shuffle=False,num_workers=8)
 
-    model=ClipModel(cfg)#.to(device)
-    model = DDP(model, device_ids=[local_rank], output_device=local_rank)
+
+
+    model=ClipModel(cfg).cuda()
+    model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
     model.train()
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr)
     scheduler= torch.optim.lr_scheduler.StepLR(optimizer,gamma=cfg.gamma,step_size=cfg.step_size)
@@ -62,15 +65,20 @@ def train(cfg):
         train_num = 0
         torch.cuda.empty_cache()
         for batch_idx, data in enumerate(train_dataloader):
-            img,label,txt=data[0].to(device),data[1].to(device),data[2].to(device)
+            img,label,txt=data[0].cuda(),data[1].cuda(),data[2].cuda()
             optimizer.zero_grad()
 
             pred=model(img,txt)
             loss=model.loss(pred,label)
 
+            dist.barrier()
+
             pred_label=pred.topk(3)
             gt=label.topk(3)
             acc=torch.sum(pred_label.indices==gt.indices)/pred_label.indices.numel()
+
+            dist.all_reduce(acc, op=dist.ReduceOp.SUM)
+            dist.all_reduce(loss, op=dist.ReduceOp.SUM)
 
             loss.backward()
             optimizer.step()
@@ -97,14 +105,21 @@ def train(cfg):
         model.eval()
         torch.cuda.empty_cache()
         for batch_idx, data in enumerate(val_dataloader):
-            img, label,txt = data[0].to(device), data[1].to(device), data[2].to(device)
+            img, label,txt = data[0].cuda(), data[1].cuda(), data[2].cuda()
 
             pred = model(img,txt)
             loss = model.loss(pred, label)
 
+            # print(f"after gather, rank {rank}: tensor_list: {tensor_list}")
+
+            dist.barrier()
+
             pred_label = pred.topk(3)
             gt = label.topk(3)
             acc = torch.sum(pred_label.indices == gt.indices) / pred_label.indices.numel()
+
+            dist.all_reduce(acc,op=dist.ReduceOp.SUM)
+            dist.all_reduce(loss,op=dist.ReduceOp.SUM)
 
             val_acc+=acc.item()*label.shape[0]
             val_avg_loss+=loss.item()*label.shape[0]
