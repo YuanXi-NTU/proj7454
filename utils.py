@@ -22,7 +22,8 @@ def backup(log_path):
     cur_time = f"{tmp.tm_mon}-{tmp.tm_mday}-{tmp.tm_hour}-{tmp.tm_min}-{tmp.tm_sec}"
     path = os.path.join(log_path, cur_time)
     os.mkdir(path)
-    os.system(f'cp train.py cfg.yaml model.py {path}/')
+    os.system(f'cp cfg.yaml model.py dataset.py clip_classi.py '
+              f'clip_train.py token_train.py {path}/')
     return path
 
 ori_classes = ['over', 'in front of', 'beside', 'on', 'in', 'attached to'
@@ -48,11 +49,11 @@ classes = [ 'hanging from', 'on the back of', 'falling off', 'going down',
 
 simp_classes = ['hanging', 'on the back of', 'falling', 'going down',
                         'painted','walking', 'running', 'crossing', 'standing',
-                        'lying', 'sitting', 'flying', 'jumping', 'jumping',
+                        'lying', 'sitting', 'flying', 'jumping over', 'jumping from',
                         'wearing', 'holding', 'carrying', 'looking', 'guiding', 'kissing',
                         'eating', 'drinking', 'feeding', 'biting', 'catching', 'picking',
                         'playing with', 'chasing', 'climbing', 'cleaning', 'playing',
                         'touching', 'pushing', 'pulling', 'opening','cooking', 'talking',
-                        'throwing', 'slicing','driving', 'riding', 'parked', 'driving',
+                        'throwing', 'slicing','driving', 'riding', 'parked', 'driving on',
                         'hit', 'kicking', 'swinging','entering', 'exiting', 'enclosing', 'leaning']
 

@@ -28,27 +28,97 @@ def convert_weights(model: nn.Module):
 
     model.apply(_convert_weights_to_fp16)
 
+class ClipToken(nn.Module):
+    def __init__(self, args):
+        super().__init__()
+        self.model,_=clip.load('ViT-B/32', args.device,jit=False)
+        # self.model,_=clip.load('RN50x64', args.device,jit=False)
+        self.args=args
+        convert_weights(self.model)
+        self.loss_func=torch.nn.BCELoss()
+        self.tt=nn.Sequential(
+            nn.Linear(1024,2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048,2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048,50),
+            nn.Softmax()
+        )
+    def forward(self,img,txt):
+        image_features = self.model.encode_image(img)
+        image_features2 = image_features / image_features.norm(dim=-1, keepdim=True)
+        similarity=self.tt(image_features2 )
+        # similarity=torch.bmm(image_features2.unsqueeze(1),txt.transpose(1,2)).softmax(dim=-1).squeeze(0)
+        return similarity
+    def loss(self,pred,label):
+        return self.loss_func(pred,label)
 
+
+class SimpleClip(nn.Module):
+    def __init__(self, args):
+        super().__init__()
+        # self.model, _ = clip.load('ViT-B/32', args.device, jit=False)
+        # self.model,_=clip.load('RN50x64', args.device,jit=False)
+        # self.args = args
+        # convert_weights(self.model)
+        self.loss_func = torch.nn.BCELoss()
+        self.mlp=nn.Sequential(
+            nn.Linear(1024,2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            # nn.Linear(2048, 256),
+            # nn.BatchNorm1d(256),
+            # nn.ReLU(),
+            nn.Linear(2048, 50),
+            nn.Softmax()
+        )
+        self.func=torch.nn.Softmax()
+        self.func2=torch.nn.ReLU()
+    def forward(self,img):
+        # with torch.no_grad():
+        #     image_features = self.model.encode_image(img)
+        #     image_features2 = image_features / image_features.norm(dim=-1, keepdim=True)
+        # logit=self.mlp(image_features2)
+        logit=self.mlp(img)
+        return logit
+    def loss(self,pred,label):
+        return self.loss_func(pred,label)
 class ClipModel(nn.Module):
     def __init__(self, args):
         super().__init__()
         self.model,_=clip.load('ViT-B/32', args.device,jit=False)
+        # self.model,_=clip.load('RN50x64', args.device,jit=False)
         self.args=args
         convert_weights(self.model)
         # self.clip_txt=torch.cat([clip.tokenize(f"an action of {c}") for c in ori_classes]).to(args.device)
-        self.clip_txt=torch.cat([clip.tokenize(f"a person {c} something") for c in simp_classes]).to(args.device)
+        # self.clip_txt=torch.cat([clip.tokenize(f"a person {c} something") for c in simp_classes]).cuda()#to(args.device)
         # self.clip_txt=torch.cat([clip.tokenize(f"{c} something") for c in simp_classes]).to(args.device)
-        self.loss_func=torch.nn.MSELoss()
+        self.loss_func=torch.nn.BCELoss()
     def forward(self,img,txt):
-        similarity=torch.zeros(txt.shape[0],txt.shape[1]).to(self.args.device)
+        image_features = self.model.encode_image(img)
+        image_features2 = image_features / image_features.norm(dim=-1, keepdim=True)
+        similarity=torch.bmm(image_features2.unsqueeze(1),txt.transpose(1,2)).softmax(dim=-1).squeeze(0)
+        '''
+        similarity=torch.zeros(txt.shape[0],txt.shape[1]).cuda()#to(self.args.device)
         for i in range(txt.shape[0]):
-            with torch.no_grad():
-                image_features = self.model.encode_image(img[i].unsqueeze(0))
-                image_features2 = image_features / image_features.norm(dim=-1, keepdim=True)
+            # with torch.no_grad():
+            image_features = self.model.encode_image(img[i].unsqueeze(0))
+            image_features2 = image_features / image_features.norm(dim=-1, keepdim=True)
+
             # text_features = self.model.encode_text(self.clip_txt)
-            text_features = self.model.encode_text(txt[i])
-            text_features2 = text_features / text_features.norm(dim=-1, keepdim=True)
-            similarity[i] += (100.0 * image_features2 @ text_features2.T).softmax(dim=-1).squeeze(0)
+            # text_features = self.model.encode_text(txt[i])
+            # text_features2 = text_features / text_features.norm(dim=-1, keepdim=True)
+
+            # similarity[i] += (100.0 * image_features2 @ txt.T).softmax(dim=-1).squeeze(0)
+            similarity[i] += (100.0 * image_features2 @ txt.T).softmax(dim=-1).squeeze(0)
+
+            # similarity[i] += (100.0 * image_features2 @ text_features2.T).softmax(dim=-1).squeeze(0)
+        '''
         return similarity
         # with torch.no_grad():
         #     image_features = self.model.encode_image(img)
@@ -62,46 +132,33 @@ class ClipModel(nn.Module):
         return self.loss_func(pred,label)
         # return torch.sum((pred-label)**2)
 
-class SegModel(nn.Module):
-    pass
-
-class Tmodel(nn.Module):
-    def __init__(self,args):
+class ClipModel_gen_token(nn.Module):
+    def __init__(self, args):
         super().__init__()
-        # self.seg=SegModel()
-        self.seg= torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
-        self.seg.eval()
-        self.clip,self.clip_pre=clip.load('ViT-B/32',args.device)
-        self.T2PIL=torchvision.transforms.Compose(
-            [torchvision.transforms.ToPILImage()]
-        )
+        # self.model,_=clip.load('RN50', args.device,jit=False)
+        # self.model,_=clip.load('RN50x64', args.device,jit=False)
+        self.model,_=clip.load('ViT-B/32', args.device,jit=False)
 
-    def forward(self,x):
-        # seg phase
-        with torch.no_grad():
-            res=self.seg(x)
-            boxes=torch.stack([r['boxes'] for r in res])
-            labeles=torch.stack([r['labels'] for r in res])
-            scores=torch.stack([r['scores'] for r in res])
-            masks=torch.stack([r['masks'] for r in res])
+        self.args=args
+        convert_weights(self.model)
+        self.loss_func=torch.nn.BCELoss()
+    def forward(self,img,txt):
+        similarity=torch.zeros(txt.shape[0],txt.shape[1]).cuda()#to(self.args.device)
+        for i in range(txt.shape[0]):
+            with torch.no_grad():
+                text_features = self.model.encode_text(txt[i])
+                text_features2 = text_features / text_features.norm(dim=-1, keepdim=True)
 
-
-            mask=self.seg(x)
-            x=x*mask
-        x=[self.T2PIL(x[xx]) for xx in range(len(x.size()[0]))]
-
-        image_input=[self.clip_pre(xx).unsqueeze(0) for xx in x] # turn to clip, batched
-        # clip phase
-        image_input = self.clip_pre(x).unsqueeze(0)
-        txt_input = torch.cat([self.clip.tokenize(f"a photo of a {c}" for c in classes)]).unsqueeze(0).repeat(len(image_input),1,1)
-
-        with torch.no_grad():
-            img_feat = self.clip.encode_image(image_input)
-        txt_feat = self.model.encode_text(txt_input)
-        img_feat /= img_feat.norm(dim=-1, keepdim=True)
-        txt_feat /= txt_feat.norm(dim=-1, keepdim=True)
-
-        sim = (100.0 * img_feat @ txt_feat.T).softmax(dim=-1)
-        val, idx = sim[0].topk(3)
-
-        return val
+            similarity[i] += (100.0 * image_features2 @ text_features2.T).softmax(dim=-1).squeeze(0)
+        return similarity
+        # with torch.no_grad():
+        #     image_features = self.model.encode_image(img)
+        #     image_features2 = image_features / image_features.norm(dim=-1, keepdim=True)
+        # # text_features = self.model.encode_text(self.clip_txt)
+        # text_features = self.model.encode_text(txt)
+        # text_features2 = text_features/text_features.norm(dim=-1, keepdim=True)
+        # similarity = (100.0 * image_features2 @ text_features2.T).softmax(dim=-1)
+        # return similarity
+    def loss(self,pred,label):
+        return self.loss_func(pred,label)
+        # return torch.sum((pred-label)**2)

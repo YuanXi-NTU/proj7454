@@ -1,10 +1,10 @@
-epoch: 100
-batch_size: 4
-lr: 0.0001
+epoch: 130
+batch_size: 128
+lr: 0.0002
 
-gamma: 0.5
-step_size: 50
-seed: 0
+gamma: 0.7
+step_size: 30
+seed: 1
 dataset: psg_data
 model_name: simple_net
 
@@ -14,3 +14,5 @@ lr_decay_rate: 0.5
 lr_decay_min_lr: 0.00001
 
 log_path: ./log
+load_path: '' #'./log/10-10-2-10-35/model.pth' #model.pth
+dbg: False
